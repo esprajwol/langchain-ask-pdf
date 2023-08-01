@@ -13,27 +13,30 @@ from langchain.callbacks import get_openai_callback
 
 def main():
     load_dotenv()
-    st.set_page_config(page_title="LangChain PDF Asking Method")
-    st.header("LangChain PDF Asking Method")
+    st.set_page_config(page_title="Ask Me PDF")
+    st.header("Ask Me PDF")
     
     # upload file
-    pdf = st.file_uploader("Upload your PDF", type="pdf")
+    pdfs = st.file_uploader("Upload your PDF", type="pdf",accept_multiple_files=True)
     
-    # extract the text
-    if pdf is not None:
-      pdf_reader = PdfReader(pdf)
+    for uploaded_file in pdfs:
+      print("filename:", uploaded_file.name)
       text = ""
-      for page in pdf_reader.pages:
+      # extract the text
+      if uploaded_file is not None:
+        pdf_reader = PdfReader(uploaded_file)
+
+        for page in pdf_reader.pages:
           text += page.extract_text()
         
-      # split into chunks
-      text_splitter = CharacterTextSplitter(
+        # split into chunks
+        text_splitter = CharacterTextSplitter(
         separator="\n",
         chunk_size=1000,
         chunk_overlap=200,
         length_function=len
-      )
-      chunks = text_splitter.split_text(text)
+        )
+        chunks = text_splitter.split_text(text)
       
       # create embeddings
       embeddings = OpenAIEmbeddings()
@@ -43,16 +46,13 @@ def main():
       user_question = st.text_input("Ask a question about your PDF:")
       if user_question:
         docs = knowledge_base.similarity_search(user_question)
-        
         llm = OpenAI(temperature=0.9)
         #llm = ChatOpenAI(temperature=0.9,model_name='gpt-3.5-turbo'),retriever=vectorstore.as_retriever())
-
         chain = load_qa_chain(llm, chain_type="stuff")
         with get_openai_callback() as cb:
           response = chain.run(input_documents=docs, question=user_question)
           print(cb)
-           
-        st.write(response)
+          st.write(response)
     
 
 if __name__ == '__main__':
